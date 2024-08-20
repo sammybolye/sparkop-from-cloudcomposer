@@ -1,0 +1,150 @@
+###############################################################
+#Run in the Rstudio Terminal 
+
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/cli_3.6.3.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/DBI_1.2.3.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/glue_1.7.0.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/lifecycle_1.0.4.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/pillar_1.9.0.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/purrr_1.0.2.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/rlang_1.1.4.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/tibble_3.2.1.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/tidyselect_1.2.1.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/vctrs_0.6.5.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/withr_3.0.1.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/stringr_1.5.1.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/cpp11_0.4.7.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/dbplyr_2.5.0.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/dplyr_1.1.4.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/tidyr_1.3.1.tar.gz'
+wget 'https://packagemanager.rstudio.com/all/__linux__/focal/latest/src/contrib/sparklyr_1.8.6.tar.gz'
+
+
+##################################################################
+#Run in the Rstudio Console
+
+install.packages("~/cli_3.6.3.tar.gz", repos = NULL, type = "source")
+install.packages("~/DBI_1.2.3.tar.gz", repos = NULL, type = "source")
+install.packages("~/glue_1.7.0.tar.gz", repos = NULL, type = "source")
+install.packages("~/rlang_1.1.4.tar.gz", repos = NULL, type = "source")
+install.packages("~/lifecycle_1.0.4.tar.gz", repos = NULL, type = "source")
+install.packages("~/vctrs_0.6.5.tar.gz", repos = NULL, type = "source")
+install.packages("~/pillar_1.9.0.tar.gz", repos = NULL, type = "source")
+install.packages("~/purrr_1.0.2.tar.gz", repos = NULL, type = "source")
+install.packages("~/tibble_3.2.1.tar.gz", repos = NULL, type = "source")
+install.packages("~/tidyselect_1.2.1.tar.gz", repos = NULL, type = "source")
+install.packages("~/withr_3.0.1.tar.gz", repos = NULL, type = "source")
+install.packages("~/stringr_1.5.1.tar.gz", repos = NULL, type = "source")
+install.packages("~/cpp11_0.4.7.tar.gz", repos = NULL, type = "source")
+install.packages("~/dplyr_1.1.4.tar.gz", repos = NULL, type = "source")
+install.packages("~/dbplyr_2.5.0.tar.gz", repos = NULL, type = "source")
+install.packages("~/tidyr_1.3.1.tar.gz", repos = NULL, type = "source")
+install.packages("~/sparklyr_1.8.6.tar.gz", repos = NULL, type = "source")
+
+
+###############################################################
+#Run in the RStudio Terminal
+cd /home/rstudio
+mkdir -p spark
+cd spark
+wget https://archive.apache.org/dist/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+tar xvf spark-2.4.3-bin-hadoop2.7.tgz
+
+
+##############################################################
+#Run using kubectl exec as root
+
+wget https://archive.apache.org/dist/spark/spark-3.2.0/spark-3.2.0-bin-hadoop3.2.tgz
+ tar xvf spark-3.2.0-bin-hadoop3.2.tgz
+ mkdir /opt/spark/
+ mv spark-3.2.0-bin-hadoop3.2/* /opt/spark
+ chmod -R 777 /opt/spark
+ wget "https://dl.k8s.io/release//v1.30.3/bin/linux/amd64/kubectl"
+ chmod 777 kubectl
+ mv kubectl /usr/local/bin
+
+ #######################################################################
+ #Sample Code
+
+ library(sparklyr)
+library(dplyr)
+
+# Function to generate a random string
+random_string <- function(prefix) {
+    paste0(prefix, paste(sample(c(0:9, letters), 10, replace = TRUE), collapse = ""))
+}
+
+# Set the variables
+driver_pod <- random_string("sparklyr-driver-")
+master <- "k8s://https://kubernetes"
+image <- "fstkfupg/sparkr:slim4"
+
+# Paths to the service account token and CA certificate
+token_file <- "/var/run/secrets/kubernetes.io/serviceaccount/token"
+ca_cert_file <- "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+
+# Establish the Spark connection
+sc <- spark_connect(
+    master = master,
+    config = list(
+        sparklyr.shell.master = master,
+        "sparklyr.shell.deploy-mode" = "cluster",
+        sparklyr.gateway.routing = FALSE,
+        sparklyr.gateway.remote = TRUE,
+        sparklyr.gateway.address = "localhost",
+        sparklyr.gateway.port = "7078",
+        sparklyr.shell.name = "sparklyr",
+        sparklyr.shell.class = "sparklyr.Shell",
+        sparklyr.gateway.routing = TRUE,
+        sparklyr.log.console = TRUE,
+        sparklyr.shell.conf = c(
+            paste0("spark.kubernetes.container.image=", image),
+            paste0("spark.kubernetes.driver.pod.name=", driver_pod),
+            "spark.kubernetes.authenticate.driver.serviceAccountName=spark-sa",
+           # "spark.driver.extraClassPath=/opt/spark/sparklyr-master-2.12.jar",
+            "spark.driver.memory=4g",
+            "spark.executor.memory=4g"
+        ),
+        sparklyr.app.jar = "local:///opt/spark/sparklyr-master-2.12.jar",
+        sparklyr.events.aftersubmit = function() {
+            # wait for pods to launch
+            Sys.sleep(15)
+            # configure port forwarding using CA cert and token
+            system2(
+                "kubectl",
+                c(
+                    "port-forward", 
+                    driver_pod, 
+                    "4040:4040", 
+                    "7078:7078", 
+                    "7079:7079", 
+                    "--server=https://kubernetes.default.svc", 
+                    paste("--token", readLines(token_file)), 
+                    paste("--certificate-authority", ca_cert_file)
+                ),
+                wait = FALSE
+            )
+        }
+    ),
+    spark_home = '/opt/spark'
+)
+
+
+
+# Create a simple data frame in R
+df <- data.frame(
+  name = c("Alice", "Bob", "Carol"),
+  age = c(25, 30, 35)
+)
+
+# Copy the data frame to Spark
+spark_df <- copy_to(sc, df, "spark_df", overwrite = TRUE)
+
+# Perform a simple operation to test the connection
+result <- spark_df %>% summarize(avg_age = mean(age)) %>% collect()
+
+# Print the result
+print(result)
+
+# Disconnect from Spark
+spark_disconnect(sc)
